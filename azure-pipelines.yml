@@ -1,0 +1,25 @@
+trigger:
+  branches:
+    include:
+      - docs-migration
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: github-mirror
+
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  # Mirrors the docs-migration branch onto GitHub's main branch, which is the
+  # branch GitBook's Git Sync is pointed at.
+  - script: |
+      set -euo pipefail
+      git push "https://$GITHUB_TOKEN@github.com/BT-Software-Team/asgn_sug.git" \
+        HEAD:refs/heads/main --force
+    displayName: Mirror docs-migration to GitHub main
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/docs-migration'))
+    env:
+      GITHUB_TOKEN: $(GITHUB_TOKEN)
