@@ -1,0 +1,19 @@
+# This branch is force-mirrored to a PUBLIC GitHub repo on every push, so a
+# committed secret is world-readable within about a minute and stays in history
+# permanently. Credentials belong in the github-mirror variable group in Azure
+# DevOps, never in this repo. See CONNECT-TO-GITBOOK.md.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+id_rsa*
+id_ed25519*
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
