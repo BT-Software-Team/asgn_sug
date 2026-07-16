@@ -1,68 +1,77 @@
-# How to Connect This Repo to GitBook
+# How These Docs Get Published
 
-Follow these steps to turn this folder into a live public docs site in ~10 minutes.
+This repo lives in Azure DevOps, but GitBook's Git Sync only supports GitHub and
+GitLab. So the docs take one extra hop:
 
----
+```
+Azure DevOps (asgn_swug, docs-migration branch)   <- you edit here
+        |
+        |  azure-pipelines.yml, on every push
+        v
+GitHub (BT-Software-Team/asgn_sug, main branch)   <- a mirror; do not edit
+        |
+        |  GitBook Git Sync
+        v
+GitBook site
+```
 
-## Step 1 — Push to GitHub
+Azure DevOps is the source of truth. The GitHub repo is a mirror and nothing
+else.
 
-1. Create a new GitHub repository (e.g., `amplideX-one-reporter-docs`). Set it to **Private** or **Public** depending on your preference — GitBook works with both.
+## Editing the docs
 
-2. From your terminal, in this folder:
+Commit Markdown to the `docs-migration` branch in Azure DevOps. That's it — the
+mirror runs automatically and GitBook picks the change up within a minute or so.
 
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial docs structure"
-   git remote add origin https://github.com/YOUR_ORG/amplideX-one-reporter-docs.git
-   git push -u origin main
-   ```
+Add any new page to `SUMMARY.md`, which is what GitBook uses to build the
+navigation. A page that isn't listed there won't appear on the site.
 
----
+## Two things not to do
 
-## Step 2 — Set Up GitBook
+**Don't edit in the GitBook UI.** GitBook can be configured to write changes back
+to GitHub, but the mirror force-pushes over `main` on every Azure commit. Anything
+written from the GitBook side gets destroyed on the next push, with no warning and
+nothing to recover from. The space is configured with GitHub as the source of
+truth to prevent this — leave it that way.
 
-1. Go to [gitbook.com](https://gitbook.com) and create a free account (or log in).
+**Don't push to the GitHub repo directly.** Same reason: the next mirror run
+overwrites it.
 
-2. Click **+ New Space** → **Import from GitHub**.
+## The GitHub repo is public
 
-3. Authorize GitBook to access your GitHub organization.
+`BT-Software-Team/asgn_sug` is public, and the mirror is automatic. Anything
+committed to `docs-migration` is world-readable within about a minute, with no
+review step in between. Before committing, check for anything that shouldn't be:
+unreleased feature descriptions, internal hostnames or IPs, customer names,
+license keys pasted into a troubleshooting example.
 
-4. Select the `amplideX-one-reporter-docs` repository and choose the `main` branch.
+Git history is public too, so deleting a file in a later commit does not unpublish
+it.
 
-5. GitBook will import the content, using `SUMMARY.md` as the navigation structure.
+## Pipeline setup
 
-6. Your docs site is live. GitBook gives you a URL like `https://your-org.gitbook.io/amplideX-one-reporter`.
+Already configured, recorded here in case it needs rebuilding.
 
----
+1. **Variable group** — Pipelines → Library → group named `github-mirror`, holding
+   `GITHUB_TOKEN` marked secret (the padlock). The token is a GitHub fine-grained
+   PAT scoped to `BT-Software-Team/asgn_sug` with **Contents: read and write**.
+   Nothing more is needed. Fine-grained PATs against an org repo may need an org
+   owner to approve them.
 
-## Step 3 — Invite Collaborators
+2. **Pipeline** — Pipelines → New pipeline → Azure Repos Git → `asgn_swug` →
+   Existing Azure Pipelines YAML file → `/azure-pipelines.yml`, on the
+   `docs-migration` branch. On first run, authorize it to use the variable group.
 
-- **Engineers** can edit via Git: commit Markdown to the repo and changes sync to GitBook automatically.
-- **Non-technical contributors** (QA, product, regulatory): invite them directly in GitBook → they edit in the visual WYSIWYG editor → changes sync back to the GitHub repo.
+3. **GitBook** — point Git Sync at `BT-Software-Team/asgn_sug`, branch `main`,
+   with GitHub as the source of truth.
 
-Go to **Settings → Members** in GitBook to add editors.
+`azure-pipelines.yml` must stay on the `docs-migration` branch. Azure Pipelines
+reads trigger configuration from the branch being pushed, so the same file on
+`main` would never fire.
 
----
+## Versioning by release
 
-## Ongoing Workflow
-
-| Who | How they edit |
-|-----|--------------|
-| Engineers | Edit `.md` files in the repo → push to `main` |
-| Technical writers | Edit in GitBook's editor or via the repo |
-| QA / Regulatory / Product | Edit in GitBook's visual editor — no Git knowledge needed |
-
-Changes from either side sync bidirectionally within seconds.
-
----
-
-## Versioning by Release
-
-When you release a new software version, create a new **GitBook Variant** (GitBook's term for a versioned copy of a space):
-
-1. In GitBook, go to your Space → click the version dropdown → **New Variant**.
-2. Name it after the release (e.g., `v2.0`, `v2.1`).
-3. Each variant maps to a branch in the GitHub repo.
-
-Users can switch between versions from the docs site. Old versions remain available as read-only archives.
+To version the docs per release, create a GitBook **Variant** (Space → version
+dropdown → New Variant) mapped to a GitHub branch. Mirroring a second branch means
+adding another push line to `azure-pipelines.yml` — the current pipeline mirrors
+`docs-migration` only.
